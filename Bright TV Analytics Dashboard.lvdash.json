@@ -1,0 +1,1013 @@
+{
+  "datasets": [
+    {
+      "name": "40281830",
+      "displayName": "brighttv_eda",
+      "queryLines": [
+        "----------------------------------------------------\r\n",
+        "-- Combining the viewership table witht the user_profile table\r\n",
+        "----------------------------------------------------\r\n",
+        "\r\n",
+        "----------------------------------------------------\r\n",
+        "-- Viewership table\r\n",
+        "----------------------------------------------------\r\n",
+        "\r\n",
+        "WITH viewership AS (\r\n",
+        "SELECT\r\n",
+        "    COALESCE (UserID0, userid4,0) AS userid,\r\n",
+        "\r\n",
+        "    --Dates\r\n",
+        "    TO_CHAR(TO_DATE(RecordDate2), 'yyyymm') AS Month_id, -- TO_CHAR: convert a date into a string & TO_DATE(): Convert a string into a date\r\n",
+        "    To_DATE(RecordDate2) AS watch_date, -- is to extract the date from the timestamp in the table\r\n",
+        "    DAYNAME(RecordDate2) AS day_name,\r\n",
+        "\r\n",
+        "    CASE\r\n",
+        "        WHEN day_name IN ('Sat', 'Sun') THEN 'Weekend'\r\n",
+        "        ELSE 'Weekday'\r\n",
+        "    END AS day_class,\r\n",
+        "\r\n",
+        "    MONTHNAME(RecordDate2) AS month_name,\r\n",
+        "\r\n",
+        "    TO_CHAR(RecordDate2, 'dd') AS day_of_week,\r\n",
+        "\r\n",
+        "    -- Time\r\n",
+        "    DATE_FORMAT(RecordDate2, 'HH:mm:ss') AS watch_time,\r\n",
+        "    \r\n",
+        "    HOUR(RecordDate2) AS hour_of_day,\r\n",
+        "\r\n",
+        "    CASE\r\n",
+        "        WHEN watch_time BETWEEN '00:00:00' AND '05:59:59' THEN 'Midnight'\r\n",
+        "        WHEN watch_time BETWEEN '06:00:00' AND '11:59:59' THEN 'Morning'\r\n",
+        "        WHEN watch_time BETWEEN '12:00:00' AND '16:59:59' THEN 'Afternoon'\r\n",
+        "        WHEN watch_time BETWEEN '17:00:00' AND '23:59:59' THEN 'Evening'\r\n",
+        "    END AS time_of_day,\r\n",
+        "\r\n",
+        "    DATE_FORMAT(`Duration 2`, 'HH:mm:ss') AS Duration,\r\n",
+        "\r\n",
+        "    CASE\r\n",
+        "        WHEN Duration BETWEEN '00:01:00' AND '00:30:00' THEN 'Low Usage'\r\n",
+        "        WHEN Duration BETWEEN '00:30:01' AND '00:59:59' THEN 'Medium Usage'\r\n",
+        "        WHEN Duration > '00:59:59' THEN 'Hihg Usage'\r\n",
+        "    END AS Screen_time,\r\n",
+        "\r\n",
+        "    CASE \r\n",
+        "        WHEN Duration <= '00:02:00' THEN 'inactive_user'\r\n",
+        "        ELSE 'active_user'\r\n",
+        "    END AS User_flag,\r\n",
+        "\r\n",
+        "    CASE \r\n",
+        "        WHEN Channel2 IN ('SawSee', 'Sawsee') THEN 'SawSee'\r\n",
+        "        WHEN Channel2 IN ('Supersport Live Events', 'Live on SuperSport', 'SuperSport Live Events', 'DStv Events 1') THEN 'Live Events'\r\n",
+        "        WHEN Channel2 = 'E! Entertainment' THEN 'Entertainment'\r\n",
+        "        ELSE Channel2\r\n",
+        "    END AS TV_Channel,\r\n",
+        "\r\n",
+        "    CASE\r\n",
+        "        WHEN COALESCE(UserID0, userid4) IS NOT NULL THEN 1\r\n",
+        "        ELSE 0\r\n",
+        "    END AS active_subscriber_flag\r\n",
+        "\r\n",
+        " FROM brightlearn.bright_tv.viewership\r\n",
+        "),\r\n",
+        "\r\n",
+        "------------------------------------------------------------------------------\r\n",
+        "-- User_profile table\r\n",
+        "------------------------------------------------------------------------------\r\n",
+        "user_profile AS (\r\n",
+        "SELECT UserID,\r\n",
+        "    CASE\r\n",
+        "        WHEN gender = ' ' THEN 'Unknown'\r\n",
+        "        WHEN gender = 'None' THEN 'Unknown'\r\n",
+        "        ELSE gender\r\n",
+        "    END AS Gender_gp,\r\n",
+        "\r\n",
+        "    CASE\r\n",
+        "        WHEN Race = 'other' THEN 'None'\r\n",
+        "             WHEN Race = ' ' THEN 'None'\r\n",
+        "        ELSE Race\r\n",
+        "    END AS Race_New,\r\n",
+        "\r\n",
+        "    CASE\r\n",
+        "        WHEN Province = ' ' THEN 'Uncategorized'\r\n",
+        "        WHEN Province = 'None' THEN 'Uncategorized'\r\n",
+        "        ELSE Province\r\n",
+        "    END AS Region,\r\n",
+        "\r\n",
+        "    CASE\r\n",
+        "        WHEN age BETWEEN 0 AND 4 THEN 'Infant'\r\n",
+        "        WHEN age BETWEEN 5 AND 12 THEN 'Child'\r\n",
+        "        WHEN age BETWEEN 13 AND 18 THEN 'Teenager'\r\n",
+        "        WHEN age BETWEEN 19 AND 35 THEN 'Youth'\r\n",
+        "        WHEN age BETWEEN 36 AND 59 THEN 'Adult'\r\n",
+        "        WHEN age BETWEEN 60 AND 74 THEN 'Senior'\r\n",
+        "        WHEN age >= 75 THEN 'Elderly'\r\n",
+        "    END AS Age_group,\r\n",
+        "\r\n",
+        "    CASE\r\n",
+        "        WHEN (Email IS NOT NULL) AND (email != ' ') AND (email != 'None') THEN 1\r\n",
+        "        ELSE 0\r\n",
+        "    END AS Email_flag,\r\n",
+        "\r\n",
+        "    CASE\r\n",
+        "        WHEN (`Social Media Handle` IS NOT NULL) AND (`Social Media Handle` != ' ') AND (`Social Media Handle` != 'None') THEN 1\r\n",
+        "        ELSE 0\r\n",
+        "    END AS social_media_flag\r\n",
+        "\r\n",
+        "FROM `brightlearn`.`bright_tv`.`user_profile`\r\n",
+        ")\r\n",
+        "\r\n",
+        "-----------------------------------------------------------------------------------------------------------------\r\n",
+        "-- Using a left Join to combined the tables\r\n",
+        "----------------------------------------------------------------------------------------------------------------\r\n",
+        "SELECT COALESCE (v.Userid, u.Userid) AS UserID,\r\n",
+        "        day_name,\r\n",
+        "        day_class,\r\n",
+        "        month_name,\r\n",
+        "        watch_time,\r\n",
+        "        hour_of_day,\r\n",
+        "        time_of_day,\r\n",
+        "        Duration,\r\n",
+        "        Screen_time,\r\n",
+        "        TV_Channel,\r\n",
+        "        Gender_gp,\r\n",
+        "        Race_New,\r\n",
+        "        Region,\r\n",
+        "        Age_group,\r\n",
+        "        Email_flag,\r\n",
+        "        social_media_flag,\r\n",
+        "        User_flag\r\n",
+        "\r\n",
+        "FROM viewership AS v\r\n",
+        "LEFT JOIN user_profile AS u\r\n",
+        "ON v.userid = u.UserID\r\n",
+        "GROUP BY ALL\r\n",
+        ";\r\n"
+      ],
+      "catalog": "workspace",
+      "schema": "default"
+    }
+  ],
+  "pages": [
+    {
+      "name": "cfdd1f04",
+      "displayName": "Dashboard",
+      "layout": [
+        {
+          "widget": {
+            "name": "v",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "40281830",
+                  "fields": [
+                    {
+                      "name": "TV_Channel",
+                      "expression": "`TV_Channel`"
+                    },
+                    {
+                      "name": "countdistinct(UserID)",
+                      "expression": "COUNT(DISTINCT `UserID`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": "Viewership by TV Channel",
+                "headerAlignment": "center"
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "TV_Channel",
+                  "axis": {
+                    "hideTitle": true,
+                    "hideLabels": false
+                  },
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "countdistinct(UserID)",
+                  "axis": {
+                    "hideTitle": true,
+                    "hideGrid": false,
+                    "hideLabels": true
+                  },
+                  "displayName": "Viewers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            },
+            "specExtensions": {
+              "widgetBorderColor": {
+                "dark": "#11191C"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "73e9fff6",
+            "multilineTextboxSpec": {
+              "lines": [
+                "<span style=\"text-align:center;display:block;\"><span style=\"font-size:24px\">**BRIGHT\\_TV Viewership Analytics**</span></span>"
+              ]
+            },
+            "specExtensions": {
+              "widgetBackgroundColor": {
+                "dark": "#920BE7"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 5,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "t",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "40281830",
+                  "fields": [
+                    {
+                      "name": "count(*)",
+                      "expression": "COUNT(`*`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Total Subscribers",
+                "headerAlignment": "center"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(*)",
+                  "formatTemplate": "{{ @formatted }}",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            },
+            "specExtensions": {
+              "widgetBackgroundColor": {
+                "dark": "#03101B"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "88ee0f52",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "40281830",
+                  "fields": [
+                    {
+                      "name": "countdistinct(UserID)",
+                      "expression": "COUNT(DISTINCT `UserID`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Active Viewers",
+                "headerAlignment": "center"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "countdistinct(UserID)",
+                  "formatTemplate": "{{ @formatted }}",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            },
+            "specExtensions": {
+              "widgetBackgroundColor": {
+                "dark": "#03101B"
+              }
+            }
+          },
+          "position": {
+            "x": 7,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "v-1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "40281830",
+                  "fields": [
+                    {
+                      "name": "day_name",
+                      "expression": "`day_name`"
+                    },
+                    {
+                      "name": "count(UserID)",
+                      "expression": "COUNT(`UserID`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Viewership by Day of Week",
+                "headerAlignment": "center"
+              },
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "day_name",
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "Mon",
+                        "Tue",
+                        "Wed",
+                        "Thu",
+                        "Fri",
+                        "Sat",
+                        "Sun"
+                      ]
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "count(UserID)",
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "v-2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "40281830",
+                  "fields": [
+                    {
+                      "name": "count(UserID)",
+                      "expression": "COUNT(`UserID`)"
+                    },
+                    {
+                      "name": "Region",
+                      "expression": "`Region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "style": {
+                "fontColor": {
+                  "dark": "#F0E8F0"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Viewership by Region",
+                "headerAlignment": "center"
+              },
+              "mark": {
+                "colors": [
+                  "#9D6A07",
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "count(UserID)",
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "Region",
+                  "axis": {
+                    "hideLabels": false,
+                    "hideTitle": true
+                  },
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 4,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "g",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "40281830",
+                  "fields": [
+                    {
+                      "name": "countdistinct(UserID)",
+                      "expression": "COUNT(DISTINCT `UserID`)"
+                    },
+                    {
+                      "name": "Gender_gp",
+                      "expression": "`Gender_gp`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Subscription by Gender",
+                "headerAlignment": "center"
+              },
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "countdistinct(UserID)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "formatTemplate": "{{ @formatted }}",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "Gender_gp",
+                  "legend": {
+                    "hideTitle": true,
+                    "position": "bottom"
+                  },
+                  "formatTemplate": "{{ @formatted }}",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "female",
+                        "male",
+                        "Unknown"
+                      ]
+                    }
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 2,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "vi-1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "40281830",
+                  "fields": [
+                    {
+                      "name": "countdistinct(UserID)",
+                      "expression": "COUNT(DISTINCT `UserID`)"
+                    },
+                    {
+                      "name": "time_of_day",
+                      "expression": "`time_of_day`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Viewership by Time of day",
+                "headerAlignment": "center"
+              },
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "countdistinct(UserID)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "hideTitle": true
+                  }
+                },
+                "color": {
+                  "fieldName": "time_of_day",
+                  "legend": {
+                    "hideTitle": true,
+                    "hide": false
+                  },
+                  "formatTemplate": "{{ @formatted }}",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Midnight",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 2
+                        }
+                      },
+                      {
+                        "value": "Evening",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 1
+                        }
+                      },
+                      {
+                        "value": "Morning",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 3
+                        }
+                      }
+                    ],
+                    "sort": {
+                      "by": "angle-reversed"
+                    }
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 7,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "s-1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "40281830",
+                  "fields": [
+                    {
+                      "name": "Race_New",
+                      "expression": "`Race_New`"
+                    },
+                    {
+                      "name": "countdistinct(UserID)",
+                      "expression": "COUNT(DISTINCT `UserID`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Viewership By Race",
+                "headerAlignment": "center"
+              },
+              "mark": {
+                "colors": [
+                  "#EE3C7C",
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Race_New",
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y"
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "countdistinct(UserID)",
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 7,
+            "y": 7,
+            "width": 5,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "d374019c",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "40281830",
+                  "fields": [
+                    {
+                      "name": "count(*)",
+                      "expression": "COUNT(`*`)"
+                    },
+                    {
+                      "name": "month_name",
+                      "expression": "`month_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Monthly Subscribers",
+                "headerAlignment": "center"
+              },
+              "mark": {
+                "colors": [
+                  "#124242",
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "month_name",
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "Jan",
+                        "Feb",
+                        "Mar"
+                      ]
+                    }
+                  }
+                },
+                "label": {
+                  "show": true,
+                  "text": {
+                    "fieldName": "count(*)"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            },
+            "specExtensions": {
+              "widgetBackgroundColor": {
+                "dark": "#03101B"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
